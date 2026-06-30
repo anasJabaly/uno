@@ -1,5 +1,5 @@
 
 const CONFIG = {
     METERED_APP: 'unoserver.metered.live',
-    METERED_KEY: 'ahrDIhWDK6C3CtVGAKvlZQaoZa2_GHRu9NTtkmjjJorRMA32'
+    METERED_KEY: 'gqsyX8BNrfvlPjOZT0DkD3MfbahLa8luez56kjr_hoV0Mu6w'
 };
