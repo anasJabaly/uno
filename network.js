@@ -45,7 +45,7 @@ function genCode(){
 async function createRoom(){
   myName = $('name').value.trim();
   if(!myName){ lobbyMsg('Bitte gib zuerst deinen Namen ein.','err'); return; }
-  ME.name = myName; saveIdentity();
+  ME.name = myName; ME.wins = winsFor(myName); saveIdentity();
   isHost = true; roomCode = genCode();
   lobbyMsg('Raum wird erstellt…','ok');
 
@@ -84,7 +84,7 @@ async function joinRoom(){
   const code = $('join').value.trim().toUpperCase();
   if(!myName){ lobbyMsg('Bitte gib zuerst deinen Namen ein.','err'); return; }
   if(code.length !== 4){ lobbyMsg('Der Raumcode hat 4 Zeichen.','err'); return; }
-  ME.name = myName; saveIdentity();
+  ME.name = myName; ME.wins = winsFor(myName); saveIdentity();
   isHost = false; roomCode = code;
   lobbyMsg('Verbinde mit Raum '+code+'…','ok');
 

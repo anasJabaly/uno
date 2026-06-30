@@ -17,23 +17,30 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-/* ---------- Identität (localStorage) ---------- */
+/* ---------- Identität: Name = Profil, Siege pro Name gespeichert ---------- */
+function loadProfiles(){ try{ return JSON.parse(localStorage.getItem('uno_profiles')||'{}') || {}; }catch(e){ return {}; } }
+function saveProfiles(p){ try{ localStorage.setItem('uno_profiles', JSON.stringify(p)); }catch(e){} }
+function winsFor(name){ if(!name) return 0; return loadProfiles()[name] || 0; }
+function setWinsFor(name, w){ if(!name) return; const p = loadProfiles(); p[name] = w; saveProfiles(p); }
+
 function loadIdentity(){
-  let pid='', name='', wins=0;
+  let last = '';
   try{
-    pid = localStorage.getItem('uno_pid') || '';
-    if(!pid){ pid = 'u'+Math.random().toString(36).slice(2,10); localStorage.setItem('uno_pid', pid); }
-    name = localStorage.getItem('uno_name') || '';
-    wins = parseInt(localStorage.getItem('uno_wins')||'0', 10) || 0;
-  }catch(e){ pid = 'u'+Math.random().toString(36).slice(2,10); }
-  ME.pid = pid; ME.name = name; ME.wins = wins;
-}
-function saveIdentity(){
-  try{
-    localStorage.setItem('uno_pid', ME.pid||'');
-    localStorage.setItem('uno_name', ME.name||'');
-    localStorage.setItem('uno_wins', String(ME.wins||0));
+    last = localStorage.getItem('uno_lastname') || '';
+    // Einmalige Migration vom alten ID-System (Siege nicht verlieren)
+    if(Object.keys(loadProfiles()).length === 0){
+      const oldName = localStorage.getItem('uno_name') || '';
+      const oldWins = parseInt(localStorage.getItem('uno_wins')||'0',10) || 0;
+      if(oldName){ setWinsFor(oldName, oldWins); if(!last) last = oldName; }
+    }
   }catch(e){}
+  ME.name = last;
+  ME.wins = winsFor(last);
+}
+/* Aktuellen Namen merken + Siege darunter sichern */
+function saveIdentity(){
+  try{ localStorage.setItem('uno_lastname', ME.name || ''); }catch(e){}
+  setWinsFor(ME.name, ME.wins || 0);
 }
 
 /* ---------- Karten-Element ---------- */
@@ -349,8 +356,14 @@ window.addEventListener('beforeunload', function (e) {
   if (roomCode) { e.preventDefault(); e.returnValue = ''; }
 });
 
-/* ---------- Start: Identität laden & anzeigen ---------- */
+/* ---------- Start: Profil laden & anzeigen ---------- */
+function updateIdLine(){
+  const n = $('name').value.trim();
+  if(n){ $('idLine').innerHTML = `🏆 <b>${winsFor(n)}</b> Siege als „${escapeHtml(n)}"`; }
+  else { $('idLine').textContent = 'Gib einen Namen ein – darunter werden deine Siege gespeichert.'; }
+}
 loadIdentity();
 if(ME.name) $('name').value = ME.name;
-$('idLine').innerHTML = `Angemeldet als ID <b>${escapeHtml(ME.pid)}</b> · 🏆 ${ME.wins} Siege`;
+$('name').addEventListener('input', updateIdLine);
+updateIdLine();
 updateHandSizeUI();

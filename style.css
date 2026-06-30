@@ -172,3 +172,16 @@ input.code{letter-spacing:.35em;text-transform:uppercase;text-align:center;font-
   .center{gap:14px;}
   .card{width:74px;height:112px;}
 }
+
+/* ---------- Farbauswahl: Hand sichtbar lassen ---------- */
+/* Leichter Schleier + oben angedockt, damit man beim Wählen die eigenen Karten sieht */
+#colorOverlay{
+  background:rgba(10,12,16,.22);
+  backdrop-filter:none;
+  align-items:flex-start;
+  padding-top:8vh;
+}
+#colorOverlay .picker{max-width:300px;padding:18px 18px 20px;}
+#colorOverlay .picker h3{margin-bottom:12px;font-size:18px;}
+#colorOverlay .swatches{gap:10px;}
+#colorOverlay .swatch{height:58px;font-size:13px;}
