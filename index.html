@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>UNO – mit Familie & Freunden spielen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===================== LOBBY ===================== -->
+  <section id="lobby">
+    <div class="brand"><div class="logo">UNO</div></div>
+    <p class="tagline">Mit Familie & Freunden spielen – Raum erstellen oder beitreten</p>
+
+    <div class="card-panel">
+      <label for="name">Dein Name</label>
+      <input id="name" maxlength="14" placeholder="z.B. Anas" autocomplete="off" />
+
+      <button class="btn btn-red" id="createBtn">Neuen Raum erstellen</button>
+
+      <div class="divider">ODER</div>
+
+      <label for="join">Raumcode</label>
+      <input id="join" class="code" maxlength="4" placeholder="ABCD" autocomplete="off" />
+      <button class="btn btn-blue" id="joinBtn">Raum beitreten</button>
+
+      <div class="msg" id="lobbyMsg"></div>
+    </div>
+    <p class="small-foot">Läuft direkt im Browser über eine Peer-to-Peer-Verbindung. Kein Server nötig.</p>
+  </section>
+
+  <!-- ===================== WARTERAUM ===================== -->
+  <section id="waiting" class="hidden">
+    <div class="brand"><div class="logo">UNO</div></div>
+    <div class="card-panel">
+      <div class="room-code-display">
+        <div class="lab">Raumcode – teile ihn mit deinen Mitspielern</div>
+        <div class="val" id="roomCodeVal" title="Klicken zum Kopieren">----</div>
+        <div class="copy-hint" id="copyHint">Tippen zum Kopieren</div>
+      </div>
+      <label>Spieler im Raum</label>
+      <ul class="players-list" id="playersList"></ul>
+      <button class="btn btn-green hidden" id="startBtn">Spiel starten</button>
+      <p class="small-foot" id="waitHint">Warte auf den Host…</p>
+    </div>
+  </section>
+
+  <!-- ===================== SPIEL ===================== -->
+  <section id="game" class="hidden">
+    <div class="opponents" id="opponents"></div>
+
+    <div class="table">
+      <div class="pile">
+        <div class="plabel">Nachziehstapel</div>
+        <div class="card back" id="drawPile">
+          <span class="corner tl">UNO</span><span class="val">UNO</span><span class="corner br">UNO</span>
+        </div>
+      </div>
+      <div class="pile">
+        <div class="plabel">Ablage</div>
+        <div id="discardTop"></div>
+      </div>
+      <div class="color-info">
+        <div class="plabel">Farbe</div>
+        <div class="color-ring" id="colorRing"></div>
+      </div>
+    </div>
+
+    <div class="hand-area">
+      <div class="turn-banner" id="turnBanner"></div>
+      <div class="hand" id="hand"></div>
+      <div class="actions">
+        <button class="btn btn-blue" id="drawBtn">Karte ziehen</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="log"></div>
+
+<!-- ===================== OVERLAYS ===================== -->
+<div class="overlay hidden" id="colorOverlay">
+  <div class="picker">
+    <h3>Farbe wählen</h3>
+    <div class="swatches">
+      <div class="swatch sw-red" data-color="red">ROT</div>
+      <div class="swatch sw-yellow" data-color="yellow">GELB</div>
+      <div class="swatch sw-green" data-color="green">GRÜN</div>
+      <div class="swatch sw-blue" data-color="blue">BLAU</div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="winnerOverlay">
+  <div class="winner-card">
+    <div class="trophy">🏆</div>
+    <h2 id="winnerName">—</h2>
+    <p>hat gewonnen!</p>
+    <button class="btn btn-green" id="playAgainBtn">Nochmal spielen</button>
+  </div>
+</div>
+
+<!-- ===================== SCRIPTS =====================
+     Reihenfolge ist wichtig:
+     1. PeerJS-Bibliothek
+     2. game.js     (deklariert den geteilten Zustand + Regeln)
+     3. network.js  (Verbindung & Nachrichten)
+     4. ui.js       (Anzeige + Events, bindet zum Schluss alle Buttons)
+-->
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="game.js"></script>
+<script src="network.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
