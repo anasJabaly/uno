@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>UNO – mit Familie & Freunden spielen</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Archivo+Black&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>UNO – mit Familie & Freunden spielen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Archivo+Black&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
@@ -20,6 +20,7 @@
     <div class="card-panel">
       <label for="name">Dein Name</label>
       <input id="name" maxlength="14" placeholder="z.B. Anas" autocomplete="off" />
+      <div class="id-line" id="idLine"></div>
 
       <button class="btn btn-red" id="createBtn">Neuen Raum erstellen</button>
 
@@ -43,6 +44,16 @@
         <div class="val" id="roomCodeVal" title="Klicken zum Kopieren">----</div>
         <div class="copy-hint" id="copyHint">Tippen zum Kopieren</div>
       </div>
+
+      <div id="handSizeCtrl" class="hidden">
+        <label>Startkarten pro Spieler</label>
+        <div class="stepper">
+          <button id="hsMinus" type="button">–</button>
+          <span id="handSizeVal">7</span>
+          <button id="hsPlus" type="button">+</button>
+        </div>
+      </div>
+
       <label>Spieler im Raum</label>
       <ul class="players-list" id="playersList"></ul>
       <button class="btn btn-green hidden" id="startBtn">Spiel starten</button>
@@ -52,23 +63,28 @@
 
   <!-- ===================== SPIEL ===================== -->
   <section id="game" class="hidden">
-    <div class="opponents" id="opponents"></div>
-
-    <div class="table">
-      <div class="pile">
-        <div class="plabel">Nachziehstapel</div>
-        <div class="card back" id="drawPile">
-          <span class="corner tl">UNO</span><span class="val">UNO</span><span class="corner br">UNO</span>
+    <div class="felt">
+      <div class="opponents" id="opponents"></div>
+      <div class="center">
+        <div class="pile">
+          <div class="plabel">Stapel</div>
+          <div class="card back" id="drawPile"><span class="val">UNO</span></div>
+        </div>
+        <div class="pile">
+          <div class="plabel">Ablage</div>
+          <div id="discardTop"></div>
+        </div>
+        <div class="color-info">
+          <div class="plabel">Farbe</div>
+          <div class="color-ring" id="colorRing"></div>
+          <div class="dir" id="dirArrow">↻</div>
         </div>
       </div>
-      <div class="pile">
-        <div class="plabel">Ablage</div>
-        <div id="discardTop"></div>
-      </div>
-      <div class="color-info">
-        <div class="plabel">Farbe</div>
-        <div class="color-ring" id="colorRing"></div>
-      </div>
+    </div>
+
+    <div class="self-bar">
+      <span class="self-name" id="selfName"></span>
+      <span class="self-stats" id="selfStats"></span>
     </div>
 
     <div class="hand-area">
@@ -76,6 +92,7 @@
       <div class="hand" id="hand"></div>
       <div class="actions">
         <button class="btn btn-blue" id="drawBtn">Karte ziehen</button>
+        <button class="btn btn-red hidden" id="unoBtn">UNO!</button>
       </div>
     </div>
   </section>
@@ -99,19 +116,18 @@
 
 <div class="overlay hidden" id="winnerOverlay">
   <div class="winner-card">
-    <div class="trophy">🏆</div>
+    <div class="trophy" id="winTrophy">🏆</div>
     <h2 id="winnerName">—</h2>
-    <p>hat gewonnen!</p>
-    <button class="btn btn-green" id="playAgainBtn">Nochmal spielen</button>
+    <p id="winSub">hat die Runde gewonnen</p>
+    <div class="gained" id="gainedLine"></div>
+    <table class="ranking" id="rankingTable"></table>
+    <button class="btn btn-green" id="nextBtn">Nächste Runde</button>
+    <p class="small-foot hidden" id="waitNext">Warte auf den Host…</p>
   </div>
 </div>
 
 <!-- ===================== SCRIPTS =====================
-     Reihenfolge ist wichtig:
-     1. PeerJS-Bibliothek
-     2. game.js     (deklariert den geteilten Zustand + Regeln)
-     3. network.js  (Verbindung & Nachrichten)
-     4. ui.js       (Anzeige + Events, bindet zum Schluss alle Buttons)
+     Reihenfolge wichtig: PeerJS -> game.js -> network.js -> ui.js
 -->
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="game.js"></script>
