@@ -1,8 +1,5 @@
 /* ============================================================
    game.js – Spiel-Regeln & autoritativer Host-Zustand
-   ------------------------------------------------------------
-   Geteilter Zustand (var = dateiübergreifend sichtbar) + reine
-   Uno-Logik. Kein DOM hier – nur Daten & Regeln.
    ============================================================ */
 
 /* ---------- Geteilter Zustand ---------- */
@@ -15,16 +12,7 @@ var ME = { pid:null, name:'', wins:0 };   // wird in ui.js aus localStorage gela
 const COLORS = ['red','yellow','green','blue'];
 const SYMBOL = { skip:'⦸', reverse:'⇄', draw2:'+2', wild:'★', wild4:'+4' };
 const SHORT  = { skip:'S', reverse:'R', draw2:'+2', wild:'W', wild4:'+4' };
-const TARGET = 500;     // Punkte zum Spielsieg
 const UNO_PENALTY = 2;  // Strafkarten, wenn UNO vergessen wurde
-
-/* ---------- Punkte ---------- */
-function cardPoints(card){
-  if(['skip','reverse','draw2'].includes(card.value)) return 20;
-  if(card.value === 'wild' || card.value === 'wild4') return 50;
-  return parseInt(card.value, 10);   // 0–9
-}
-function handPoints(hand){ return hand.reduce((s,c)=> s + cardPoints(c), 0); }
 
 /* ---------- Karten / Deck ---------- */
 function shuffle(a){
@@ -51,12 +39,12 @@ function cardCorner(card){
 }
 
 /* ============================================================
-   HOST: Runde starten (Punkte & Siege bleiben erhalten)
+   HOST: Runde starten (Siege bleiben erhalten)
    ============================================================ */
 function startGame(){
   if(!isHost) return;
   if(game.players.length < 2){ toast('Mindestens 2 Spieler nötig.'); return; }
-  const hs = Math.max(1, Math.min(12, game.handSize || 7));
+  const hs = Math.max(1, Math.min(15, game.handSize || 7));
   game.handSize = hs;
 
   game.deck = buildDeck();
@@ -154,14 +142,10 @@ function playCard(pid, index, chosenColor){
 
   const ev = {kind:'play', by:pid, card, penalty};
 
-  // Runde gewonnen?
+  // Runde gewonnen? -> Sieg zählen
   if(cur.hand.length === 0){
-    const gained = game.players.filter(p=>p.id!==cur.id).reduce((s,p)=> s + handPoints(p.hand), 0);
-    cur.score += gained;
-    game.lastRound = { winner: cur.name, gained };
+    cur.wins = (cur.wins||0) + 1;
     game.winner = cur.name;
-    if(cur.score >= TARGET){ game.champion = cur.name; cur.wins = (cur.wins||0) + 1; }
-    else game.champion = null;
     broadcastState(ev);
     return;
   }
@@ -171,8 +155,8 @@ function playCard(pid, index, chosenColor){
     case 'skip':    game.currentIndex = nextIndex(game.currentIndex, 2); break;
     case 'reverse': game.direction *= -1;
       game.currentIndex = (n === 2) ? game.currentIndex : nextIndex(game.currentIndex, 1); break;
-    case 'draw2':   game.drawStack += 2; game.currentIndex = nextIndex(game.currentIndex, 1); break;  // stapelbar
-    case 'wild4':   game.drawStack += 4; game.currentIndex = nextIndex(game.currentIndex, 1); break;  // stapelbar
+    case 'draw2':   game.drawStack += 2; game.currentIndex = nextIndex(game.currentIndex, 1); break;  // stapelbar, kein Aussetzen
+    case 'wild4':   game.drawStack += 4; game.currentIndex = nextIndex(game.currentIndex, 1); break;  // stapelbar, kein Aussetzen
     default:        game.currentIndex = nextIndex(game.currentIndex, 1);
   }
   broadcastState(ev);
@@ -180,19 +164,29 @@ function playCard(pid, index, chosenColor){
 
 /* ============================================================
    HOST: Karte(n) ziehen
+   ------------------------------------------------------------
+   - Bei offenem Zieh-Zwang (+2/+4): Stapel ziehen, ABER weiter dran
+     bleiben -> man darf danach normal spielen (kein Aussetzen mehr).
+   - Sonst: 1 Karte ziehen und weitergeben.
    ============================================================ */
 function drawAction(pid){
   if(!game.started || game.winner) return;
   const cur = game.players[game.currentIndex];
   if(!cur || cur.id !== pid) return;
 
-  let count;
-  if(game.drawStack > 0){ count = game.drawStack; giveCards(cur, count); game.drawStack = 0; }  // Zieh-Zwang abarbeiten
-  else { count = 1; giveCards(cur, 1); }
+  if(game.drawStack > 0){
+    const count = game.drawStack;
+    giveCards(cur, count);
+    game.drawStack = 0;
+    cur.saidUno = false;
+    broadcastState({kind:'draw', by:pid, count});   // KEIN Weiterrücken -> Spieler bleibt am Zug
+    return;
+  }
 
+  giveCards(cur, 1);
   cur.saidUno = false;
   game.currentIndex = nextIndex(game.currentIndex, 1);
-  broadcastState({kind:'draw', by:pid, count});
+  broadcastState({kind:'draw', by:pid, count:1});
 }
 
 /* ---------- Persönliche Sicht für einen Spieler ---------- */
@@ -204,21 +198,12 @@ function makeView(pid){
     hand: me ? me.hand : [],
     youSaidUno: me ? !!me.saidUno : false,
     players: game.players.map((p,i)=>({
-      id:p.id, name:p.name, count:p.hand.length, score:p.score, wins:p.wins||0,
+      id:p.id, name:p.name, count:p.hand.length, wins:p.wins||0,
       isYou:p.id===pid,
       current: game.started && !game.winner && i===game.currentIndex
     })),
     top, color: game.currentColor, started: game.started,
     direction: game.direction, drawStack: game.drawStack, handSize: game.handSize,
-    winner: game.winner, champion: game.champion, lastRound: game.lastRound, target: TARGET
+    winner: game.winner
   };
-}
-
-/* ---------- Neues Spiel: Punkte zurücksetzen (Siege bleiben) ---------- */
-function resetScores(){
-  if(!isHost) return;
-  game.players.forEach(p=> p.score = 0);
-  game.champion = null;
-  game.lastRound = null;
-  startGame();
 }

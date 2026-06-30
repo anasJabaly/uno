@@ -83,12 +83,11 @@ function renderGame(view){
 
   view.yourTurn = meP ? meP.current : false;
 
-  // Eigene Leiste
+  // Eigene Leiste (nur Siege, kein Punktekonto mehr)
   $('selfName').textContent = meP ? meP.name : '';
-  $('selfStats').innerHTML = `<span class="chip-score">${meP?meP.score:0} Pkt</span>`+
-      `<span class="chip-wins">🏆 ${meP?meP.wins:0}</span>`;
-  // Siege spiegeln, falls ich Champion bin
-  if(view.champion && meP && view.champion === meP.name){ ME.wins = meP.wins; saveIdentity(); }
+  $('selfStats').innerHTML = `<span class="chip-wins">🏆 ${meP?meP.wins:0}</span>`;
+  // Siege auf diesem Gerät speichern, wenn ICH die Runde gewonnen habe
+  if(view.winner && meP && view.winner === meP.name){ ME.wins = meP.wins; saveIdentity(); }
 
   // Gegner-Sitzplätze
   const felt = $('opponents'); felt.innerHTML='';
@@ -134,7 +133,7 @@ function renderGame(view){
   if(view.winner){ tb.textContent=''; }
   else if(view.yourTurn){
     tb.className = 'turn-banner you';
-    tb.textContent = view.drawStack>0 ? `Du bist dran – stapeln oder ${view.drawStack} Karten ziehen!` : 'Du bist dran!';
+    tb.textContent = view.drawStack>0 ? `Du bist dran – stapeln oder ${view.drawStack} ziehen (danach normal spielen)` : 'Du bist dran!';
   } else {
     const cur = view.players.find(p=>p.current);
     tb.className = 'turn-banner wait';
@@ -194,23 +193,21 @@ function canPlayLocally(card, view){
   return false;
 }
 
-/* ---------- Gewinner / Rangliste ---------- */
+/* ---------- Gewinner / Sieges-Rangliste ---------- */
 function renderWinner(view){
-  const champ = view.champion;
-  $('winTrophy').textContent = champ ? '👑' : '🏆';
-  $('winnerName').textContent = champ ? champ : view.winner;
-  $('winSub').textContent = champ ? `gewinnt das Spiel mit ${view.target}+ Punkten!` : 'hat die Runde gewonnen';
-  $('gainedLine').textContent = view.lastRound ? `+${view.lastRound.gained} Punkte` : '';
+  $('winTrophy').textContent = '🏆';
+  $('winnerName').textContent = view.winner;
+  $('winSub').textContent = 'hat die Runde gewonnen';
+  $('gainedLine').textContent = '';
 
-  const rank = [...view.players].sort((a,b)=> b.score - a.score);
+  const rank = [...view.players].sort((a,b)=> (b.wins||0) - (a.wins||0));
   $('rankingTable').innerHTML =
-      '<tr><th>#</th><th>Spieler</th><th>Punkte</th><th>Siege</th></tr>' +
-      rank.map((p,i)=>`<tr class="${p.isYou?'me':''}"><td>${i+1}</td><td>${escapeHtml(p.name)}${p.isYou?' (Du)':''}</td><td>${p.score}</td><td>${p.wins||0}</td></tr>`).join('');
+      '<tr><th>#</th><th>Spieler</th><th>Siege</th></tr>' +
+      rank.map((p,i)=>`<tr class="${p.isYou?'me':''}"><td>${i+1}</td><td>${escapeHtml(p.name)}${p.isYou?' (Du)':''}</td><td>🏆 ${p.wins||0}</td></tr>`).join('');
 
   if(isHost){
     $('nextBtn').classList.remove('hidden'); $('waitNext').classList.add('hidden');
-    $('nextBtn').textContent = champ ? 'Neues Spiel' : 'Nächste Runde';
-    $('nextBtn').dataset.mode = champ ? 'new' : 'round';
+    $('nextBtn').textContent = 'Nächste Runde';
   } else {
     $('nextBtn').classList.add('hidden'); $('waitNext').classList.remove('hidden');
   }
@@ -308,7 +305,7 @@ $('drawBtn').onclick   = doDraw;
 $('unoBtn').onclick    = sayUnoLocal;
 
 $('hsMinus').onclick = ()=>{ chosenHandSize = Math.max(2, chosenHandSize-1); updateHandSizeUI(); };
-$('hsPlus').onclick  = ()=>{ chosenHandSize = Math.min(12, chosenHandSize+1); updateHandSizeUI(); };
+$('hsPlus').onclick  = ()=>{ chosenHandSize = Math.min(15, chosenHandSize+1); updateHandSizeUI(); };
 
 document.querySelectorAll('.swatch').forEach(sw=>{
   sw.onclick = ()=>{
@@ -329,23 +326,15 @@ $('startBtn').onclick = ()=>{ game.handSize = chosenHandSize; startGame(); };
 $('nextBtn').onclick = ()=>{
   if(!isHost) return;
   hide('winnerOverlay');
-  if($('nextBtn').dataset.mode === 'new') resetScores();
-  else startGame();
+  startGame();
 };
 
 $('name').addEventListener('keydown', e=>{ if(e.key==='Enter') $('join').focus(); });
 $('join').addEventListener('keydown', e=>{ if(e.key==='Enter') joinRoom(); });
 
-
-
 /* ---------- Schutz gegen versehentliches Neuladen ---------- */
 window.addEventListener('beforeunload', function (e) {
-  // Wenn der Spieler in einem Raum ist (roomCode existiert)
-  if (roomCode) {
-    // Zeige die Standard-Browser-Warnung ("Änderungen werden evtl. nicht gespeichert")
-    e.preventDefault();
-    e.returnValue = '';
-  }
+  if (roomCode) { e.preventDefault(); e.returnValue = ''; }
 });
 
 /* ---------- Start: Identität laden & anzeigen ---------- */
