@@ -52,6 +52,7 @@ function startGame(){
   game.direction = 1;
   game.winner = null;
   game.drawStack = 0;
+  game.drewThisTurn = false;
   game.players.forEach(p=>{ p.hand = game.deck.splice(0,hs); p.saidUno = false; });
 
   // Startkarte: erste echte Farbkarte (keine Wild/Aktion als Auftakt)
@@ -98,6 +99,9 @@ function canPlay(card){
   return false;
 }
 
+/* Hat der Spieler überhaupt eine legbare Karte? */
+function hasPlayable(player){ return player.hand.some(c=> canPlay(c)); }
+
 function reshuffleIfNeeded(){
   if(game.deck.length > 0) return;
   const top = game.discard.pop();
@@ -110,6 +114,11 @@ function giveCards(player, n){
 function nextIndex(from, steps){
   const n = game.players.length;
   return ((from + game.direction*steps) % n + n) % n;
+}
+/* Zug weiterrücken + "schon gezogen"-Markierung zurücksetzen */
+function advanceTurn(steps){
+  game.currentIndex = nextIndex(game.currentIndex, steps);
+  game.drewThisTurn = false;
 }
 
 /* ---------- UNO ansagen ---------- */
@@ -124,7 +133,8 @@ function sayUno(pid){
    ============================================================ */
 function playCard(pid, index, chosenColor){
   if(!game.started || game.winner) return;
-  const cur = game.players[game.currentIndex];
+  const actorIdx = game.currentIndex;
+  const cur = game.players[actorIdx];
   if(!cur || cur.id !== pid) return;
   const card = cur.hand[index];
   if(!card) return;
@@ -152,22 +162,30 @@ function playCard(pid, index, chosenColor){
 
   const n = game.players.length;
   switch(card.value){
-    case 'skip':    game.currentIndex = nextIndex(game.currentIndex, 2); break;
-    case 'reverse': game.direction *= -1;
-      game.currentIndex = (n === 2) ? game.currentIndex : nextIndex(game.currentIndex, 1); break;
-    case 'draw2':   game.drawStack += 2; game.currentIndex = nextIndex(game.currentIndex, 1); break;  // stapelbar, kein Aussetzen
-    case 'wild4':   game.drawStack += 4; game.currentIndex = nextIndex(game.currentIndex, 1); break;  // stapelbar, kein Aussetzen
-    default:        game.currentIndex = nextIndex(game.currentIndex, 1);
+    case 'skip':    advanceTurn(2); break;
+    case 'reverse': game.direction *= -1; advanceTurn(n === 2 ? 0 : 1); break;
+    case 'draw2':   game.drawStack += 2; advanceTurn(1); break;  // stapelbar, kein Aussetzen
+    case 'wild4':   game.drawStack += 4; advanceTurn(1); break;  // stapelbar, kein Aussetzen
+    default:        advanceTurn(1);
   }
+
+  // Regel B: Bleibt der Zug bei mir (zu zweit: Aussetzen/Drehen) und ich kann
+  // nichts mehr legen, muss ich NICHT ziehen -> der/die andere ist dran.
+  if(game.currentIndex === actorIdx && !hasPlayable(cur)){
+    advanceTurn(1);
+  }
+
   broadcastState(ev);
 }
 
 /* ============================================================
    HOST: Karte(n) ziehen
    ------------------------------------------------------------
-   - Bei offenem Zieh-Zwang (+2/+4): Stapel ziehen, ABER weiter dran
-     bleiben -> man darf danach normal spielen (kein Aussetzen mehr).
-   - Sonst: 1 Karte ziehen und weitergeben.
+   - Offener Zieh-Zwang (+2/+4): Stapel ziehen, ABER weiter dran
+     bleiben (kein Aussetzen).
+   - Sonst (Regel A): 1 Karte ziehen. Kann man danach spielen, bleibt
+     man dran (spielen oder weitergeben). Kann man nicht -> automatisch
+     weiter zum nächsten Spieler.
    ============================================================ */
 function drawAction(pid){
   if(!game.started || game.winner) return;
@@ -179,24 +197,43 @@ function drawAction(pid){
     giveCards(cur, count);
     game.drawStack = 0;
     cur.saidUno = false;
-    broadcastState({kind:'draw', by:pid, count});   // KEIN Weiterrücken -> Spieler bleibt am Zug
+    broadcastState({kind:'draw', by:pid, count});   // bleibt am Zug
     return;
   }
 
   giveCards(cur, 1);
   cur.saidUno = false;
-  game.currentIndex = nextIndex(game.currentIndex, 1);
-  broadcastState({kind:'draw', by:pid, count:1});
+  game.drewThisTurn = true;
+
+  if(hasPlayable(cur)){
+    broadcastState({kind:'draw', by:pid, count:1});         // darf spielen oder weitergeben
+  } else {
+    advanceTurn(1);                                         // nichts spielbar -> weiter
+    broadcastState({kind:'draw', by:pid, count:1});
+  }
+}
+
+/* ---------- HOST: bewusst weitergeben (nur nach dem Ziehen) ---------- */
+function passTurn(pid){
+  if(!game.started || game.winner) return;
+  const cur = game.players[game.currentIndex];
+  if(!cur || cur.id !== pid) return;
+  if(!game.drewThisTurn) return;   // weitergeben nur erlaubt, wenn man schon gezogen hat
+  advanceTurn(1);
+  broadcastState({kind:'pass', by:pid});
 }
 
 /* ---------- Persönliche Sicht für einen Spieler ---------- */
 function makeView(pid){
   const top = topCard();
   const me = game.players.find(p=>p.id===pid);
+  const yourTurn = game.started && !game.winner &&
+      game.players[game.currentIndex] && game.players[game.currentIndex].id === pid;
   return {
     type:'state',
     hand: me ? me.hand : [],
     youSaidUno: me ? !!me.saidUno : false,
+    youDrew: yourTurn && !!game.drewThisTurn,
     players: game.players.map((p,i)=>({
       id:p.id, name:p.name, count:p.hand.length, wins:p.wins||0,
       isYou:p.id===pid,

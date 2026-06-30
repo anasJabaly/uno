@@ -150,10 +150,19 @@ function renderGame(view){
     hand.appendChild(el);
   });
 
-  // Ziehen-Knopf
+  // Ziehen- / Weitergeben-Knopf
   const db = $('drawBtn');
   db.disabled = !view.yourTurn;
-  db.textContent = (view.yourTurn && view.drawStack>0) ? `${view.drawStack} Karten ziehen` : 'Karte ziehen';
+  if(view.yourTurn && view.drawStack>0){
+    db.textContent = `${view.drawStack} Karten ziehen`;
+    db.onclick = doDraw;
+  } else if(view.yourTurn && view.youDrew){
+    db.textContent = 'Weitergeben';
+    db.onclick = doPass;
+  } else {
+    db.textContent = 'Karte ziehen';
+    db.onclick = doDraw;
+  }
 
   // UNO-Knopf (bei genau 2 Karten am Zug)
   const ub = $('unoBtn');
@@ -284,6 +293,10 @@ function doDraw(){
   if(isHost) drawAction(myId);
   else hostConn.send({ type:'draw' });
 }
+function doPass(){
+  if(isHost) passTurn(myId);
+  else hostConn.send({ type:'pass' });
+}
 function sayUnoLocal(){
   if(isHost) sayUno(myId);
   else hostConn.send({ type:'uno' });
@@ -301,7 +314,6 @@ function updateHandSizeUI(){ $('handSizeVal').textContent = chosenHandSize; }
 $('createBtn').onclick = createRoom;
 $('joinBtn').onclick   = joinRoom;
 $('join').addEventListener('input', e=>{ e.target.value = e.target.value.toUpperCase(); });
-$('drawBtn').onclick   = doDraw;
 $('unoBtn').onclick    = sayUnoLocal;
 
 $('hsMinus').onclick = ()=>{ chosenHandSize = Math.max(2, chosenHandSize-1); updateHandSizeUI(); };

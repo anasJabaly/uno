@@ -144,6 +144,7 @@ function handleClientMessage(conn, data){
   }
   else if(data.type === 'play'){ playCard(conn.peer, data.index, data.color); }
   else if(data.type === 'draw'){ drawAction(conn.peer); }
+  else if(data.type === 'pass'){ passTurn(conn.peer); }
   else if(data.type === 'uno'){ sayUno(conn.peer); }
 }
 
