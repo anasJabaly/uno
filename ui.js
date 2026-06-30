@@ -81,6 +81,8 @@ function renderGame(view){
   const ev = view.event;
   const meP = view.players.find(p=>p.isYou);
 
+  view.yourTurn = meP ? meP.current : false;
+
   // Eigene Leiste
   $('selfName').textContent = meP ? meP.name : '';
   $('selfStats').innerHTML = `<span class="chip-score">${meP?meP.score:0} Pkt</span>`+
@@ -333,6 +335,18 @@ $('nextBtn').onclick = ()=>{
 
 $('name').addEventListener('keydown', e=>{ if(e.key==='Enter') $('join').focus(); });
 $('join').addEventListener('keydown', e=>{ if(e.key==='Enter') joinRoom(); });
+
+
+
+/* ---------- Schutz gegen versehentliches Neuladen ---------- */
+window.addEventListener('beforeunload', function (e) {
+  // Wenn der Spieler in einem Raum ist (roomCode existiert)
+  if (roomCode) {
+    // Zeige die Standard-Browser-Warnung ("Änderungen werden evtl. nicht gespeichert")
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
 
 /* ---------- Start: Identität laden & anzeigen ---------- */
 loadIdentity();
