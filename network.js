@@ -2,6 +2,21 @@
    network.js – Peer-to-Peer (PeerJS) & Nachrichten
    ============================================================ */
 
+/* ICE-Server: STUN (findet öffentliche IP) + TURN (leitet weiter,
+   wenn direkte P2P-Verbindung scheitert, z.B. Mobilfunk/CGNAT).
+   -> Ohne TURN klappt Handy<->PC über verschiedene Netze meist nicht. */
+const ICE = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    // TURN-Fallback (kostenlos, evtl. unzuverlässig – siehe Hinweis):
+    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ]
+};
+
 function genCode(){
   const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let s=''; for(let i=0;i<4;i++) s += c[Math.floor(Math.random()*c.length)];
@@ -16,7 +31,7 @@ function createRoom(){
   isHost = true; roomCode = genCode();
   lobbyMsg('Raum wird erstellt…','ok');
 
-  peer = new Peer('uno-'+roomCode);
+  peer = new Peer('uno-'+roomCode, { config: ICE });
 
   peer.on('open', id=>{
     myId = id;
@@ -50,7 +65,7 @@ function joinRoom(){
   ME.name = myName; saveIdentity();
   isHost = false; roomCode = code;
   lobbyMsg('Verbinde mit Raum '+code+'…','ok');
-  peer = new Peer();
+  peer = new Peer({ config: ICE });
 
   peer.on('open', id=>{
     myId = id;
