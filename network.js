@@ -52,6 +52,9 @@ async function createRoom(){
   await ensureIce();
   peer = new Peer('uno-'+roomCode, { config: ICE });
 
+  // Bei kurzem Verbindungsabriss (Leerlauf) automatisch neu verbinden
+  peer.on('disconnected', ()=>{ try{ peer.reconnect(); }catch(e){} });
+
   peer.on('open', id=>{
     myId = id;
     game = {
@@ -87,6 +90,9 @@ async function joinRoom(){
 
   await ensureIce();
   peer = new Peer({ config: ICE });
+
+  // Bei kurzem Verbindungsabriss (Leerlauf) automatisch neu verbinden
+  peer.on('disconnected', ()=>{ try{ peer.reconnect(); }catch(e){} });
 
   peer.on('open', id=>{
     myId = id;

@@ -163,6 +163,7 @@ input.code{letter-spacing:.35em;text-transform:uppercase;text-align:center;font-
 #log{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#0f131a;border:1px solid var(--line);color:var(--ink);padding:11px 18px;border-radius:30px;font-weight:700;font-size:14px;box-shadow:var(--shadow);opacity:0;transition:opacity .3s;pointer-events:none;z-index:100;max-width:90vw;text-align:center;}
 #log.show{opacity:1;}
 .small-foot{text-align:center;color:var(--muted);font-size:12px;margin-top:16px;font-weight:500;}
+.reload-tip{text-align:center;color:var(--muted);font-size:12px;margin-top:10px;font-weight:500;opacity:.8;}
 
 @media(max-width:560px){
   .felt{min-height:300px;}
