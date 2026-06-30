@@ -2,20 +2,38 @@
    network.js – Peer-to-Peer (PeerJS) & Nachrichten
    ============================================================ */
 
-/* ICE-Server: STUN (findet öffentliche IP) + TURN (leitet weiter,
-   wenn direkte P2P-Verbindung scheitert, z.B. Mobilfunk/CGNAT).
-   -> Ohne TURN klappt Handy<->PC über verschiedene Netze meist nicht. */
-const ICE = {
+/* ============================================================
+   ICE-Server (STUN + TURN)
+   ------------------------------------------------------------
+   STUN findet die öffentliche IP; TURN leitet weiter, wenn eine
+   direkte Verbindung scheitert (z.B. Handy im Mobilfunk/CGNAT).
+   TURN-Daten werden bei jedem Start frisch von metered.ca geholt.
+   ============================================================ */
+const METERED_APP = CONFIG.METERED_APP;
+const METERED_KEY = CONFIG.METERED_KEY;
+
+/* Start-Fallback: nur STUN (falls der TURN-Abruf scheitert) */
+let ICE = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun.cloudflare.com:3478' },
-    // TURN-Fallback (kostenlos, evtl. unzuverlässig – siehe Hinweis):
-    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    { urls: 'stun:stun.cloudflare.com:3478' }
   ]
 };
+let iceLoaded = false;
+
+async function ensureIce(){
+  if(iceLoaded) return;
+  try{
+    const res = await fetch(`https://${METERED_APP}/api/v1/turn/credentials?apiKey=${METERED_KEY}`);
+    const servers = await res.json();
+    if(Array.isArray(servers) && servers.length){
+      ICE = { iceServers: servers };
+      iceLoaded = true;
+    }
+  }catch(e){
+    console.warn('TURN-Daten konnten nicht geladen werden – nutze nur STUN.', e);
+  }
+}
 
 function genCode(){
   const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -24,13 +42,14 @@ function genCode(){
 }
 
 /* ---------- HOST: Raum erstellen ---------- */
-function createRoom(){
+async function createRoom(){
   myName = $('name').value.trim();
   if(!myName){ lobbyMsg('Bitte gib zuerst deinen Namen ein.','err'); return; }
   ME.name = myName; saveIdentity();
   isHost = true; roomCode = genCode();
   lobbyMsg('Raum wird erstellt…','ok');
 
+  await ensureIce();
   peer = new Peer('uno-'+roomCode, { config: ICE });
 
   peer.on('open', id=>{
@@ -57,7 +76,7 @@ function createRoom(){
 }
 
 /* ---------- CLIENT: Raum beitreten ---------- */
-function joinRoom(){
+async function joinRoom(){
   myName = $('name').value.trim();
   const code = $('join').value.trim().toUpperCase();
   if(!myName){ lobbyMsg('Bitte gib zuerst deinen Namen ein.','err'); return; }
@@ -65,6 +84,8 @@ function joinRoom(){
   ME.name = myName; saveIdentity();
   isHost = false; roomCode = code;
   lobbyMsg('Verbinde mit Raum '+code+'…','ok');
+
+  await ensureIce();
   peer = new Peer({ config: ICE });
 
   peer.on('open', id=>{
