@@ -341,6 +341,7 @@ $('roomCodeVal').onclick = ()=>{
 };
 
 $('startBtn').onclick = ()=>{ game.handSize = chosenHandSize; startGame(); };
+$('addBotBtn').onclick = addBot;
 
 $('nextBtn').onclick = ()=>{
   if(!isHost) return;

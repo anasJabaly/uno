@@ -260,3 +260,53 @@ function makeView(pid){
     winner: game.winner
   };
 }
+
+
+/* ============================================================
+   HOST: Bot-Logik (KI)
+   ============================================================ */
+function checkBotTurn(){
+  if(!game.started || game.winner) return;
+  const cur = game.players[game.currentIndex];
+  if(!cur || !cur.isBot) return;
+
+  // Verzögerung, damit der Bot "menschlich" wirkt und nachdenkt (1,5 Sekunden)
+  clearTimeout(game.botTimer);
+  game.botTimer = setTimeout(() => doBotMove(cur), 1500);
+}
+
+function doBotMove(bot){
+  if(!game.started || game.winner) return;
+  if(game.players[game.currentIndex].id !== bot.id) return; // Sicherstellen, dass er noch dran ist
+
+  // Situation A: Bot hat diese Runde schon eine Karte gezogen
+  if(game.drewThisTurn){
+    const playableIdx = bot.hand.findIndex(c => canPlay(c));
+    if(playableIdx !== -1) playBotCard(bot, playableIdx); // Gezogene Karte passt -> spielen!
+    else passTurn(bot.id);                                // Passt nicht -> weitergeben
+    return;
+  }
+
+  // Situation B: Normaler Zug – Bot sucht eine legbare Karte
+  const playableIdx = bot.hand.findIndex(c => canPlay(c));
+  if(playableIdx !== -1) {
+    playBotCard(bot, playableIdx);
+  } else {
+    drawAction(bot.id); // Nichts passt -> Karte ziehen
+  }
+}
+
+function playBotCard(bot, idx){
+  const card = bot.hand[idx];
+  let chosenColor = card.color;
+
+  // Wenn der Bot eine Wunschkarte oder +4 legt, wählt er eine zufällige Farbe
+  if(card.color === 'wild'){
+    chosenColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+  }
+
+  // Der Bot ist ein Profi und vergisst nie, UNO zu sagen!
+  if(bot.hand.length === 2) bot.saidUno = true;
+
+  playCard(bot.id, idx, chosenColor);
+}

@@ -121,8 +121,8 @@ function enterWaitingRoom(){
   hide('lobby'); show('waiting');
   $('roomCodeVal').textContent = roomCode;
   if(isHost){
-    show('startBtn'); show('handSizeCtrl');
-    $('waitHint').textContent = 'Startkarten wählen, dann starten.';
+    show('startBtn'); show('handSizeCtrl'); show('addBotBtn');
+    $('waitHint').textContent = 'Startkarten wählen, Bots hinzufügen oder starten.';
   }
   if(isHost) broadcastLobby();
 }
@@ -132,6 +132,27 @@ function broadcastLobby(){
   renderPlayersList(lite, myId);
   connections.forEach(c=> c.send({type:'lobby', players:lite, hostId:myId}));
 }
+
+/* ---------- HOST: Bot hinzufügen ---------- */
+function addBot(){
+  if(!isHost || !game) return;
+  if(game.players.length >= 10){ toast('Maximal 10 Spieler erlaubt.'); return; }
+  const botNum = game.players.filter(p => p.isBot).length + 1;
+  const botId = 'bot-' + Math.random().toString(36).slice(2,9);
+
+  game.players.push({
+    id: botId,
+    name: '🤖 Bot ' + botNum,
+    isBot: true,
+    hand: [],
+    score: 0,
+    wins: 0,
+    saidUno: false
+  });
+
+  broadcastLobby();
+}
+
 
 /* ---------- HOST: Nachrichten von Clients ---------- */
 function handleClientMessage(conn, data){
@@ -170,8 +191,9 @@ function broadcastState(event){
     const view = makeView(p.id);
     view.event = event || null;
     if(p.id === myId) renderGame(view);
-    else { const c = connFor(p.id); if(c) c.send(view); }
+    else if(!p.isBot) { const c = connFor(p.id); if(c) c.send(view); }
   });
+  if(isHost) checkBotTurn(); // Prüft, ob ein Bot am Zug ist
 }
 
 /* ---------- CLIENT: Nachrichten vom Host ---------- */
