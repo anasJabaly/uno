@@ -46,7 +46,7 @@ function saveIdentity(){
 /* ---------- Karten-Element ---------- */
 function makeCardEl(card){
   const el = document.createElement('div');
-  el.className = 'card ' + card.color;
+  el.className = 'card ' + card.color + (isNaN(parseInt(card.value,10)) ? ' v-'+card.value : '');
   el.innerHTML =
       `<span class="corner tl">${cardCorner(card)}</span>`+
       `<span class="val">${cardLabel(card)}</span>`+
@@ -188,7 +188,7 @@ function renderGame(view){
   // Animationen
   if(ev){
     if(ev.kind === 'deal') animateDeal(view);
-    else if(ev.kind === 'play'){ animatePlay(view, ev); if(ev.penalty){ const w=view.players.find(p=>p.id===ev.by); toast((w&&!w.isYou?w.name+': ':'')+'UNO vergessen – Strafkarten!'); } }
+    else if(ev.kind === 'play'){ animatePlay(view, ev); if(ev.card && ev.card.value==='wish') toast('⟳ Wunschkarte – alle Hände wurden weitergereicht!'); if(ev.penalty){ const w=view.players.find(p=>p.id===ev.by); toast((w&&!w.isYou?w.name+': ':'')+'UNO vergessen – Strafkarten!'); } }
     else if(ev.kind === 'draw') animateDraw(view, ev);
     else if(ev.kind === 'uno'){ const w=view.players.find(p=>p.id===ev.by); if(w && !w.isYou) toast(`${w.name} sagt UNO!`); }
   }

@@ -10,9 +10,9 @@ var ME = { pid:null, name:'', wins:0 };   // wird in ui.js aus localStorage gela
 
 /* ---------- Konstanten ---------- */
 const COLORS = ['red','yellow','green','blue'];
-const SYMBOL = { skip:'⦸', reverse:'⇄', draw2:'+2', wild:'★', wild4:'+4' };
-const SHORT  = { skip:'S', reverse:'R', draw2:'+2', wild:'W', wild4:'+4' };
-const UNO_PENALTY = 2;  // Strafkarten, wenn UNO vergessen wurde
+const SYMBOL = { skip:'⦸', reverse:'⇄', draw2:'+2', wild:'★', wild4:'+4', wish:'⟳' };
+const SHORT  = { skip:'S', reverse:'R', draw2:'+2', wild:'W', wild4:'+4', wish:'⟳' };
+const UNO_PENALTY = 1;  // Strafkarten, wenn UNO vergessen wurde
 
 /* ---------- Karten / Deck ---------- */
 function shuffle(a){
@@ -27,14 +27,15 @@ function buildDeck(){
     for(const s of ['skip','reverse','draw2']){ d.push({color:c,value:s}); d.push({color:c,value:s}); }
   }
   for(let i=0;i<4;i++){ d.push({color:'wild',value:'wild'}); d.push({color:'wild',value:'wild4'}); }
+  d.push({color:'wild', value:'wish'});   // Wunschkarte: nur EINMAL im ganzen Spiel
   return shuffle(d);
 }
 function cardLabel(card){
-  if(['skip','reverse','draw2','wild','wild4'].includes(card.value)) return SYMBOL[card.value];
+  if(['skip','reverse','draw2','wild','wild4','wish'].includes(card.value)) return SYMBOL[card.value];
   return card.value;
 }
 function cardCorner(card){
-  if(['skip','reverse','draw2','wild','wild4'].includes(card.value)) return SHORT[card.value];
+  if(['skip','reverse','draw2','wild','wild4','wish'].includes(card.value)) return SHORT[card.value];
   return card.value;
 }
 
@@ -44,6 +45,7 @@ function cardCorner(card){
 function startGame(){
   if(!isHost) return;
   if(game.players.length < 2){ toast('Mindestens 2 Spieler nötig.'); return; }
+  shuffle(game.players);   // Reihenfolge & Startspieler jede Runde zufällig
   const hs = Math.max(1, Math.min(15, game.handSize || 7));
   game.handSize = hs;
 
@@ -121,6 +123,19 @@ function advanceTurn(steps){
   game.drewThisTurn = false;
 }
 
+/* Wunschkarte: alle Hände einmal in Spielrichtung weiterreichen
+   (zu zweit = Hände tauschen). */
+function rotateHands(){
+  const n = game.players.length;
+  const hands = game.players.map(p=>p.hand);
+  const newHands = new Array(n);
+  for(let i=0;i<n;i++){
+    const target = ((i + game.direction) % n + n) % n;   // gibt an den nächsten in Spielrichtung
+    newHands[target] = hands[i];
+  }
+  game.players.forEach((p,i)=>{ p.hand = newHands[i]; p.saidUno = false; });
+}
+
 /* ---------- UNO ansagen ---------- */
 function sayUno(pid){
   const cur = game.players[game.currentIndex];
@@ -166,6 +181,7 @@ function playCard(pid, index, chosenColor){
     case 'reverse': game.direction *= -1; advanceTurn(n === 2 ? 0 : 1); break;
     case 'draw2':   game.drawStack += 2; advanceTurn(1); break;  // stapelbar, kein Aussetzen
     case 'wild4':   game.drawStack += 4; advanceTurn(1); break;  // stapelbar, kein Aussetzen
+    case 'wish':    rotateHands(); advanceTurn(1); break;        // Wunschkarte: Hände weiterreichen
     default:        advanceTurn(1);
   }
 
